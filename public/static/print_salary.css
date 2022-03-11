@@ -1,0 +1,7 @@
+@media print{
+    .print td, .print2 td, .print3 td, .print4 td, .print5 td{min-width: 50px;margin:0px;padding:2px;border:1px #ccc dashed;}
+    .print th, .print2 th, .print3 th, .print4 th, .print5 th{min-width: 50px;margin:0px;padding:2px;border:1px #ccc dashed;}
+    .print table{width: 100%;}
+}
+
+h3{padding: 10px;padding-left:20px;background-color: #efefef;margin: 0px 0px;}

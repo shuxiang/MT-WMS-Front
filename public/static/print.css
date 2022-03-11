@@ -1,0 +1,10 @@
+@media print{
+    .print td, .print2 td, .print3 td, .print4 td, .print5 td{min-width: 100px;margin:0px;padding:2px;border:1px #aaa solid;text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}
+    .print1s td, .print2s td, .print3s td, .print4s td, .print5s td{margin:0px;padding:2px;border:1px #aaa solid;text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}
+    .print th, .print2 th, .print3 th, .print4 th, .print5 th{min-width: 100px;margin:0px;padding:2px;border:1px #aaa solid;text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}
+    .print table, .print2 table, .print3 table, .print4 table, .print5 table{width: 100%;}
+    .print .nb, .print2 .nb, .print3 .nb, .print4 .nb, .print5 .nb{border: 0px;}
+}
+
+h3{padding: 10px;padding-left:20px;background-color: #efefef;margin: 0px 0px;}
+.mr-20 span{margin-right:20px;}
