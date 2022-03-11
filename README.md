@@ -10,7 +10,10 @@ MT-WMS 是开源的WMS(仓储管理系统)
 
 ### 环境初始化
 前端版本 VUE 2.6.11 antd-design-vue 1.6.2
-后端地址: https://github.com/shuxiang/MT-WMS
+[后端地址](https://github.com/shuxiang/MT-WMS)
+[文档地址](https://www.m-front.cn/docs#/dash)
+先上测试用户信息: 公司 test 用户名 test  密码 123456 [线上帐户测试地址](https://wms.m-front.cn/auth/login)
+线上注册即可使用[免费注册地址](https://wms.m-front.cn/auth/register)
 
 ```
 npm install
