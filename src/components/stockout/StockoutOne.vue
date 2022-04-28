@@ -32,9 +32,10 @@
 
       <a-modal title="扫货品条码打包" :visible="dlg_pack" width="1000px" :footer="null" :keyboard="false" :maskClosable="false" @cancel="dlg_pack=false">
         <a-input :allowClear="true" v-model="pack_barcode" ref="pack_barcode" @pressEnter="add_pack_barcode" placeholder="请输入条码/货品码" style="margin-bottom:10px;width:400px;" />
+        <a-input :allowClear="true" v-model="pack_boxcode" ref="pack_boxcode" placeholder="请输入包裹码, 可不填" style="margin-bottom:10px;width:200px;margin-left:10px;" />
         <a-table  :dataSource="pack_lines" :columns="pack_columns" rowKey="id" bordered :pagination="false">
-          <span slot="qty_unship" slot-scope="text,record">
-            {{ record.qty_pick - record.qty_ship }}
+          <span slot="qty_uncheck" slot-scope="text,record">
+            {{ record.qty_pick - record.qty_check }}
           </span>
           <span slot="qty_pack" slot-scope="text,record">
             <a-input v-model="record.qty_pack"  :allowClear="true" style="width:150px;"/>
@@ -181,7 +182,7 @@
           <a-button  style="margin-right:20px;" type="primary">部分拣货</a-button>
         </a-popconfirm>
 
-        <a-button @click="do_pack_dlg()"  v-if="order.state_ship!='done' && (order.state_pick=='done' || order.state_pick=='part')" style="margin-right:20px;" type="primary">扫码打包</a-button>
+        <a-button @click="do_pack_dlg()"  v-if="order.state_check!='done' && (order.state_pick=='done' || order.state_pick=='part')" style="margin-right:20px;" type="primary">复核打包</a-button>
 
         <a-popconfirm title="你确定要完成订单吗? 订单完成后不能再出库!"
           @confirm="do_finish(0, order)" okText="确定" cancelText="取消" 
@@ -384,6 +385,7 @@
                     <a-button @click="get_bill_code(idx, box)" v-if="!box.bill_code" type="primary">获取面单</a-button>
                     <a-button @click="query_express_line(0,box)" v-if="box.bill_code">查询物流</a-button>
                     <a-button @click="print_bill_code(0,box)" v-if="box.bill_code" style="margin-left:10px;">打印面单</a-button>
+                    <a-button @click="ship_box(0,box)" v-if="box.state=='no'" style="margin-left:10px;" type="primary">发运</a-button>
                   </td>
                   <td>快递(物流)公司: {{translate('kdniao_express_list', box.express_code)}}({{box.express_code}})</td>
                   <td>快递面单号: {{box.bill_code}} 
@@ -729,13 +731,14 @@ export default {
       order_boxs: [],
       dlg_pack: false,
       pack_barcode: '',
+      pack_boxcode: '',
       pack_lines: [],
       pack_columns: [
         {title: '货品码', key: 'sku', dataIndex: 'sku'}, 
         {title: '条码', key: 'barcode', dataIndex: 'barcode'}, 
         {title: '名称', key: 'name', dataIndex: 'name'}, 
         {title: '拣货数', key: 'qty_pick', dataIndex: 'qty_pick'}, 
-        {title: '未打包数', key: 'qty_unship', dataIndex: 'qty_unship', scopedSlots: {customRender: 'qty_unship'}}, 
+        {title: '未打包数', key: 'qty_uncheck', dataIndex: 'qty_uncheck', scopedSlots: {customRender: 'qty_uncheck'}}, 
         {title: '打包数', key: 'qty_pack', dataIndex: 'qty_pack', scopedSlots: {customRender: 'qty_pack'}}, 
       ],
       box_columns2: [
@@ -762,14 +765,15 @@ export default {
     do_pack_dlg(){
       var env = this
       this.pack_barcode = ''
+      this.pack_boxcode = ''
       this.dlg_pack = true
       this.pack_lines = []
 
       for(var i=0;i<env.lines.length;i++){
         var v = env.lines[i]
-        if( (v.qty_pick-v.qty_ship) > 0 ){
+        if( (v.qty_pick-v.qty_check) > 0 ){
           env.pack_lines.push({id:v.id, name:v.name, sku:v.sku, barcode:v.barcode, spec:v.spec, unit:v.unit,
-              qty_pick:v.qty_pick, qty_ship:v.qty_ship, qty_unship: v.qty_pick-v.qty_ship, qty_pack:0})
+              qty_pick:v.qty_pick, qty_check:v.qty_check, qty_uncheck: v.qty_pick-v.qty_check, qty_pack:0})
         }
       }
       function bf(){
@@ -794,7 +798,7 @@ export default {
       if(c==0){
         env.$message.warning('没有可以打包的数量')
       }
-      this.$http.post('/stockout/stockout/box/pack/'+this.order.id, {lines:this.pack_lines}).then(function(resp){
+      this.$http.post('/stockout/stockout/box/pack/'+this.order.id, {lines:this.pack_lines, pack_boxcode:this.pack_boxcode}).then(function(resp){
         if(resp.data.status=='success'){
           env.$message.success('打包成功')
           if(resp.data.waybill_state=='fail'){
@@ -814,7 +818,7 @@ export default {
         var v = env.pack_lines[i]
         if(env.pack_barcode==v.barcode){
           ok = true
-          if(v.qty_pack*1<v.qty_unship){
+          if(v.qty_pack*1<v.qty_uncheck){
             v.qty_pack = v.qty_pack*1 + 1
           }else{
             env.$message.warning('未打包数不足, 不要重复扫码~')
@@ -829,10 +833,22 @@ export default {
         playErr()
       }
       env.pack_barcode = ''
+      this.pack_boxcode = ''
     },
     // end 扫码装箱, 打包发运
 
     // express
+    ship_box(index, record){
+      var env = this
+      this.$http.post('/stockout/stockout/box/ship/'+record.id).then(function(resp){
+        if(resp.data.status=='success'){
+          env.$message.success('发运成功')
+          record.state = 'done'
+        }else{
+          env.$message.error('发运失败: '+resp.data.msg)
+        }
+      })
+    },
     print_bill_code(index, record){
       var env = this
       if (record.bill_code && record.tpl){

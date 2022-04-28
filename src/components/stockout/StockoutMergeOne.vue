@@ -17,9 +17,10 @@
     <div>
       <a-modal title="扫货品条码打包" :visible="dlg_pack" width="1000px" :footer="null" :keyboard="false" :maskClosable="false" @cancel="dlg_pack=false">
         <a-input :allowClear="true" v-model="pack_barcode" ref="pack_barcode" @pressEnter="add_pack_barcode" placeholder="请输入条码/货品码" style="margin-bottom:10px;width:400px;" />
+        <a-input :allowClear="true" v-model="pack_boxcode" ref="pack_boxcode" placeholder="请输入包裹码, 可不填" style="margin-bottom:10px;width:200px;margin-left:10px;" />
         <a-table  :dataSource="pack_lines" :columns="pack_columns" rowKey="id" bordered :pagination="false">
-          <span slot="qty_unship" slot-scope="text,record">
-            {{ record.qty_pick - record.qty_ship }}
+          <span slot="qty_uncheck" slot-scope="text,record">
+            {{ record.qty_pick - record.qty_check }}
           </span>
           <span slot="qty_pack" slot-scope="text,record">
             <a-input v-model="record.qty_pack"  :allowClear="true" style="width:150px;"/>
@@ -100,7 +101,7 @@
               <a-button type="primary" v-if="record.state_alloc=='done' && record.state_pick!='done'" style="margin-right:15px;" @click="do_quick_pick(index, record)">快速拣货</a-button>
               <a-button type="primary" v-if="record.state_alloc=='part' && record.state_pick=='no'" style="margin-right:15px;" @click="cancel_order_allocs_confirm(index, record)">取消分配</a-button>
 
-              <a-button @click="do_pack_dlg(index, record)"  v-if="record.state_ship!='done' && (record.state_pick=='done' || record.state_pick=='part')" style="margin-right:20px;" type="primary">扫码打包</a-button>
+              <a-button @click="do_pack_dlg(index, record)"  v-if="record.state_check!='done' && (record.state_pick=='done' || record.state_pick=='part')" style="margin-right:20px;" type="primary">复核打包</a-button>
             </span>
           </a-table>
         </a-tab-pane>
@@ -221,13 +222,14 @@ export default {
       order_boxs: [],
       dlg_pack: false,
       pack_barcode: '',
+      pack_boxcode: '',
       pack_lines: [],
       pack_columns: [
         {title: '货品码', key: 'sku', dataIndex: 'sku'}, 
         {title: '条码', key: 'barcode', dataIndex: 'barcode'}, 
         {title: '名称', key: 'name', dataIndex: 'name'}, 
         {title: '拣货数', key: 'qty_pick', dataIndex: 'qty_pick'}, 
-        {title: '未打包数', key: 'qty_unship', dataIndex: 'qty_unship', scopedSlots: {customRender: 'qty_unship'}}, 
+        {title: '未打包数', key: 'qty_uncheck', dataIndex: 'qty_uncheck', scopedSlots: {customRender: 'qty_uncheck'}}, 
         {title: '打包数', key: 'qty_pack', dataIndex: 'qty_pack', scopedSlots: {customRender: 'qty_pack'}}, 
       ],
       box_columns2: [
@@ -248,6 +250,7 @@ export default {
     do_pack_dlg(index, record){
       var env = this
       this.pack_barcode = ''
+      this.pack_boxcode = ''
       this.dlg_pack = true
       this.pack_lines = []
       this.current_out = record ? record : this.current_out
@@ -255,9 +258,9 @@ export default {
 
       for(var i=0;i<env.lines.length;i++){
         var v = env.lines[i]
-        if( (v.qty_pick-v.qty_ship) > 0 ){
+        if( (v.qty_pick-v.qty_check) > 0 ){
           env.pack_lines.push({id:v.id, name:v.name, sku:v.sku, barcode:v.barcode, spec:v.spec, unit:v.unit,
-              qty_pick:v.qty_pick, qty_ship:v.qty_ship, qty_unship: v.qty_pick-v.qty_ship, qty_pack:0})
+              qty_pick:v.qty_pick, qty_check:v.qty_check, qty_uncheck: v.qty_pick-v.qty_check, qty_pack:0})
         }
       }
       function bf(){
@@ -282,7 +285,7 @@ export default {
       if(c==0){
         env.$message.warning('没有可以打包的数量')
       }
-      this.$http.post('/stockout/stockout/box/pack/'+this.current_out.id, {lines:this.pack_lines}).then(function(resp){
+      this.$http.post('/stockout/stockout/box/pack/'+this.current_out.id, {lines:this.pack_lines, pack_boxcode:this.pack_boxcode}).then(function(resp){
         if(resp.data.status=='success'){
           env.$message.success('打包成功')
           env.load_objects()
@@ -299,7 +302,7 @@ export default {
         var v = env.pack_lines[i]
         if(env.pack_barcode==v.barcode){
           ok = true
-          if(v.qty_pack<v.qty_unship){
+          if(v.qty_pack<v.qty_uncheck){
             v.qty_pack += 1
           }else{
             env.$message.warning('未打包数不足, 不要重复扫码~')
@@ -314,6 +317,7 @@ export default {
         playErr()
       }
       env.pack_barcode = ''
+      this.pack_boxcode = ''
     },
     // end 扫码装箱, 打包发运
     
